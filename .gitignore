@@ -1,0 +1,11 @@
+```text id="x3m7q4"
+env/
+__pycache__/
+*.pyc
+db.sqlite3
+.vscode/
+.idea/
+media/
+staticfiles/
+.env
+```
