@@ -132,8 +132,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOW_ALL_ORIGINS = True
-
 AUTH_USER_MODEL = 'accounts.User'
 
 REST_FRAMEWORK = {
@@ -142,3 +140,15 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ),
 }
+
+CORS_ALLOWED_ORIGINS = [
+
+    "http://localhost:5174",
+    "http://localhost:5173",
+
+
+]
+
+
+CORS_ALLOW_CREDENTIALS = True
+
