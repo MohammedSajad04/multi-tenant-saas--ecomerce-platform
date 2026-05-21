@@ -32,5 +32,18 @@ urlpatterns = [
         'api-auth/',
         include('rest_framework.urls')
     ),
+    path(
+
+    'api/tenants/',
+
+    include('tenants.urls')
+    ),
+    path(
+
+        'api/products/',
+
+        include('products.urls')
+    ),
+
 ]
 
