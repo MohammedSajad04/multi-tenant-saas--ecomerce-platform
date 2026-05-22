@@ -228,3 +228,90 @@ class CompanyDashboardView(APIView):
 
             "recent_orders": recent_orders_data,
         })
+    
+
+class CompanyOrdersView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+
+        tenant = request.user.tenant
+
+
+        orders = Order.objects.filter(
+
+            tenant=tenant
+
+        ).order_by(
+
+            '-created_at'
+        )
+
+
+        orders_data = []
+
+
+        for order in orders:
+
+            orders_data.append({
+
+                "id": order.id,
+
+                "customer": order.user.username,
+
+                "customer_email": order.user.email,
+
+                "product": order.product.name,
+
+                "quantity": order.quantity,
+
+                "total_price": order.total_price,
+
+                "status": order.status,
+            })
+
+
+        return Response(orders_data)
+
+class CompanyCustomersView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+
+        tenant = request.user.tenant
+
+
+        orders = Order.objects.filter(
+
+            tenant=tenant
+        )
+
+
+        customers = []
+
+
+        added_users = set()
+
+
+        for order in orders:
+
+            if order.user.id not in added_users:
+
+                customers.append({
+
+                    "id": order.user.id,
+
+                    "username": order.user.username,
+
+                    "email": order.user.email,
+                })
+
+                added_users.add(order.user.id)
+
+
+        return Response(customers)
+

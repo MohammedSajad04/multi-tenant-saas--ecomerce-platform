@@ -2,7 +2,9 @@ from django.urls import path
 
 from .views import (
 
+    CompanyCustomersView,
     CompanyDashboardView,
+    CompanyOrdersView,
     CreateOrderView,
     ProductCreateView,
     ProductDetailView,
@@ -46,4 +48,20 @@ urlpatterns = [
 
         CompanyDashboardView.as_view()
     ),
+    path(
+
+        'company-orders/',
+
+        CompanyOrdersView.as_view()
+    ),
+
+    path(
+
+        'customers/',
+
+        CompanyCustomersView.as_view()
+    ),
+
+
+
 ]
