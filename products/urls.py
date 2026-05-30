@@ -5,6 +5,7 @@ from .views import (
     CompanyCustomersView,
     CompanyDashboardView,
     CompanyOrdersView,
+    CompanyProductsView,
     CreateOrderView,
     ProductCreateView,
     ProductDetailView,
@@ -29,6 +30,14 @@ urlpatterns = [
 
         ProductListView.as_view()
     ),
+
+    path(
+
+        'company-products/',
+
+        CompanyProductsView.as_view()
+    ),
+
     path(
 
         'detail/<int:product_id>/',

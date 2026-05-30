@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .order_serializers import OrderSerializer
-from .models import Product
 from .serializers import ProductSerializer
 from .models import (
 
@@ -16,12 +15,21 @@ from .models import (
 class ProductCreateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
+        if not request.user.tenant:
+            return Response(
+                {
+                    "error": "Company account required"
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = ProductSerializer(
             data=request.data
         )
         if serializer.is_valid():
             serializer.save(
-                tenant=request.user.tenant
+                tenant=request.user.tenant,
+                business_type=request.user.tenant.business_type
             )
             return Response(
                 serializer.data,
@@ -36,17 +44,48 @@ class ProductCreateView(APIView):
 
 
 class ProductListView(APIView):
+
     def get(self, request):
-        tenant_id = request.query_params.get(
-            'tenant'
-        )
+
         products = Product.objects.filter(
-            tenant_id=tenant_id
+
+            tenant__status='approved'
         )
+
         serializer = ProductSerializer(
+
             products,
             many=True
         )
+
+        return Response(serializer.data)
+
+
+class CompanyProductsView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        if not request.user.tenant:
+            return Response(
+                {
+                    "error": "Company account required"
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        products = Product.objects.filter(
+
+            tenant=request.user.tenant
+        )
+
+        serializer = ProductSerializer(
+
+            products,
+            many=True
+        )
+
         return Response(serializer.data)
 
 
@@ -71,7 +110,9 @@ class ProductDetailView(APIView):
             partial=True
         )
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(
+                business_type=request.user.tenant.business_type
+            )
             return Response(serializer.data)
         return Response(
             serializer.errors,

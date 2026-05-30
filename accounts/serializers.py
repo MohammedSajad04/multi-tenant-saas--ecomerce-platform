@@ -10,6 +10,11 @@ class UserSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    tenant_business_type = serializers.CharField(
+        source='tenant.business_type',
+        read_only=True
+    )
+
     modules = serializers.JSONField(
         source='tenant.modules',
         read_only=True
@@ -26,5 +31,6 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'tenant',
             'tenant_name',
+            'tenant_business_type',
             'modules'
         ]

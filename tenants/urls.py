@@ -1,10 +1,7 @@
 from django.urls import path
-from .views import (
+from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView )
+from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
 
-    TenantRegisterView,
-    PendingTenantListView,
-    ApproveTenantView
-)
 urlpatterns = [
     path(
         'register/',
@@ -17,5 +14,18 @@ urlpatterns = [
     path(
         'approve/<int:tenant_id>/',
         ApproveTenantView.as_view()
+    ),
+    path(
+
+    'superadmin/companies/',
+
+    SuperAdminCompaniesView.as_view()
+    ),
+
+    path(
+
+        'superadmin/approve/<int:tenant_id>/',
+
+        ApproveCompanyView.as_view()
     ),
 ]

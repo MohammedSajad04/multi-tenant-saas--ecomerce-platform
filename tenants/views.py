@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Tenant
-
+from .serializers import TenantSerializer
 
 from .serializers import (
 
@@ -77,4 +77,100 @@ class ApproveTenantView(APIView):
                 "password": password
             },
             status=status.HTTP_200_OK
+        )
+
+class SuperAdminCompaniesView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+
+    def get(self, request):
+
+        if not request.user.is_superuser:
+
+            return Response(
+
+                {
+
+                    "error": "Unauthorized"
+                },
+
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+
+        tenants = Tenant.objects.all()
+
+
+
+        serializer = TenantSerializer(
+
+            tenants,
+            many=True
+        )
+
+
+
+        return Response(serializer.data)
+
+
+
+
+class ApproveCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+
+                {
+
+                    "error": "Unauthorized"
+                },
+
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+
+        try:
+
+            tenant = Tenant.objects.get(
+
+                id=tenant_id
+            )
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+
+                {
+
+                    "error": "Company not found"
+                },
+
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+
+        tenant.is_approved = True
+
+        tenant.save()
+
+
+
+        return Response(
+
+            {
+
+                "message": "Company approved"
+            }
         )

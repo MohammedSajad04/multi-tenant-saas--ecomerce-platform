@@ -5,10 +5,13 @@ import uuid
 
 class Tenant(models.Model):
 
-    BUSINESS_TYPES = (
-        ('ecommerce', 'Ecommerce'),
-        ('service', 'Service'),
-        ('hybrid', 'Hybrid'),
+    BUSINESS_CHOICES = (
+
+        ("mobile", "Mobile"),
+
+        ("cake", "Cake"),
+
+        ("perfume", "Perfume"),
     )
 
     STATUS_CHOICES = (
@@ -17,28 +20,24 @@ class Tenant(models.Model):
         ('rejected', 'Rejected'),
     )
 
-    company_name = models.CharField(
-        max_length=255
-    )
+    company_name = models.CharField( max_length=255)
 
-    slug = models.SlugField(
-        unique=True
-    )
+    slug = models.SlugField(unique=True)
 
     business_type = models.CharField(
+
         max_length=50,
-        choices=BUSINESS_TYPES
+
+        choices=BUSINESS_CHOICES,
+
+        default="mobile"
     )
 
-    owner_name = models.CharField(
-        max_length=255
-    )
+    owner_name = models.CharField( max_length=255)
 
     company_email = models.EmailField()
 
-    phone_number = models.CharField(
-        max_length=20
-    )
+    phone_number = models.CharField( max_length=20)
 
     address = models.TextField()
 
@@ -76,3 +75,4 @@ class Tenant(models.Model):
 
     def __str__(self):
         return self.company_name
+    
