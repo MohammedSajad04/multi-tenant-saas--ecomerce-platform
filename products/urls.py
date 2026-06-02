@@ -1,7 +1,6 @@
 from django.urls import path
 
 from .views import (
-
     CompanyCustomersView,
     CompanyDashboardView,
     CompanyOrdersView,
@@ -9,7 +8,9 @@ from .views import (
     CreateOrderView,
     ProductCreateView,
     ProductDetailView,
-    ProductListView
+    ProductListView,
+    MyOrdersView,
+    UpdateOrderStatusView
 )
 
 
@@ -70,7 +71,8 @@ urlpatterns = [
 
         CompanyCustomersView.as_view()
     ),
-
-
-
+    path('my-orders/',MyOrdersView.as_view()
+    ),
+    path('update-order/<int:order_id>/', UpdateOrderStatusView.as_view()
+    )
 ]

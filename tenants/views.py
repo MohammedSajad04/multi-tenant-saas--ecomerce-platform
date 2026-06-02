@@ -174,3 +174,4 @@ class ApproveCompanyView(APIView):
                 "message": "Company approved"
             }
         )
+

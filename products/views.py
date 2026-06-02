@@ -42,18 +42,18 @@ class ProductCreateView(APIView):
 
 
 
-
 class ProductListView(APIView):
 
     def get(self, request):
 
-        products = Product.objects.filter(
+        tenant_id = request.GET.get("tenant")
 
-            tenant__status='approved'
+        products = Product.objects.filter(
+            tenant_id=tenant_id,
+            tenant__status="approved"
         )
 
         serializer = ProductSerializer(
-
             products,
             many=True
         )
@@ -90,89 +90,140 @@ class CompanyProductsView(APIView):
 
 
 class ProductDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-    def put(self, request, product_id):
-        try:
-            product = Product.objects.get(
-                id=product_id,
-                tenant=request.user.tenant
-            )
-        except Product.DoesNotExist:
-            return Response(
-                {
-                    "error": "Product not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        serializer = ProductSerializer(
-            product,
-            data=request.data,
-            partial=True
-        )
-        if serializer.is_valid():
-            serializer.save(
-                business_type=request.user.tenant.business_type
-            )
-            return Response(serializer.data)
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    def delete(self, request, product_id):
-        try:
-            product = Product.objects.get(
-                id=product_id,
-                tenant=request.user.tenant
-            )
-        except Product.DoesNotExist:
-            return Response(
-                {
-                    "error": "Product not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        product.delete()
-        return Response(
-            {
-                "message": "Product deleted successfully"
-            }
-        )
-
-class CreateOrderView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-
-    def post(self, request, product_id):
+    def get(self, request, product_id):
 
         try:
 
             product = Product.objects.get(
-
                 id=product_id
             )
 
         except Product.DoesNotExist:
 
             return Response(
-
                 {
-
                     "error": "Product not found"
                 },
-
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        serializer = ProductSerializer(product)
+
+        return Response(serializer.data)
+
+    def put(self, request, product_id):
+
+        try:
+
+            product = Product.objects.get(
+                id=product_id,
+                tenant=request.user.tenant
+            )
+
+        except Product.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "Product not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ProductSerializer(
+            product,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+
+            serializer.save(
+                business_type=request.user.tenant.business_type
+            )
+
+            return Response(serializer.data)
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def delete(self, request, product_id):
+
+        try:
+
+            product = Product.objects.get(
+                id=product_id,
+                tenant=request.user.tenant
+            )
+
+        except Product.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "Product not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        product.delete()
+
+        return Response(
+            {
+                "message": "Product deleted successfully"
+            }
+        )
+    
+class CreateOrderView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_id):
+
+        try:
+
+            product = Product.objects.get(
+                id=product_id
+            )
+
+        except Product.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "Product not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         quantity = int(
-
             request.data.get('quantity', 1)
         )
 
+        if quantity <= 0:
+
+            return Response(
+                {
+                    "error": "Quantity must be greater than 0"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if quantity > product.stock:
+
+            return Response(
+                {
+                    "error": "Insufficient stock"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         total_price = product.price * quantity
 
+        product.stock -= quantity
+        product.save()
 
         order = Order.objects.create(
 
@@ -187,13 +238,10 @@ class CreateOrderView(APIView):
             total_price=total_price
         )
 
-
         serializer = OrderSerializer(order)
 
         return Response(
-
             serializer.data,
-
             status=status.HTTP_201_CREATED
         )
 
@@ -356,3 +404,60 @@ class CompanyCustomersView(APIView):
 
         return Response(customers)
 
+class MyOrdersView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        orders = Order.objects.filter(
+            user=request.user
+        ).order_by('-created_at')
+
+        serializer = OrderSerializer(
+            orders,
+            many=True
+        )
+
+        return Response(serializer.data)
+    
+class UpdateOrderStatusView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, order_id):
+
+        order = Order.objects.get(
+            id=order_id,
+            tenant=request.user.tenant
+        )
+
+        order.status = request.data.get(
+            'status'
+        )
+
+        order.save()
+
+        return Response({
+            "message": "Status Updated"
+        })
+    def get(self, request, product_id):
+
+        try:
+
+            product = Product.objects.get(
+                id=product_id
+            )
+
+        except Product.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "Product not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ProductSerializer(product)
+
+        return Response(serializer.data)
