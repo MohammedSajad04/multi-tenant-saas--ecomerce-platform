@@ -161,7 +161,7 @@ class ApproveCompanyView(APIView):
 
 
 
-        tenant.is_approved = True
+        tenant.status = "approved"
 
         tenant.save()
 
@@ -175,3 +175,133 @@ class ApproveCompanyView(APIView):
             }
         )
 
+class CompanyDetailView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(
+                id=tenant_id
+            )
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = TenantSerializer(tenant)
+
+        return Response(serializer.data)
+    
+class RejectCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(
+                id=tenant_id
+            )
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        tenant.status = "rejected"
+        tenant.save()
+
+        return Response(
+            {"message": "Company rejected"}
+        )
+    
+class BlockCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(
+                id=tenant_id
+            )
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        tenant.status = "blocked"
+
+        tenant.save()
+
+        return Response(
+            {"message": "Company blocked"}
+        )
+    
+class UnblockCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(
+                id=tenant_id
+            )
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        tenant.status = "approved"
+
+        tenant.save()
+
+        return Response(
+            {"message": "Company unblocked"}
+        )

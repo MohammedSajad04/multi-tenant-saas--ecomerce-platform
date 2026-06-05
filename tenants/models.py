@@ -18,6 +18,7 @@ class Tenant(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('blocked', 'Blocked'),
     )
 
     company_name = models.CharField( max_length=255)
