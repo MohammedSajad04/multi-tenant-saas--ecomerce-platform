@@ -4,6 +4,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Tenant
 from .serializers import TenantSerializer
+from accounts.models import User
+from tenants.tasks import send_company_approval_email
+
 
 from .serializers import (
 
@@ -122,56 +125,66 @@ class ApproveCompanyView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-
-
     def put(self, request, tenant_id):
 
         if not request.user.is_superuser:
 
             return Response(
-
                 {
-
                     "error": "Unauthorized"
                 },
-
                 status=status.HTTP_403_FORBIDDEN
             )
-
-
 
         try:
 
             tenant = Tenant.objects.get(
-
                 id=tenant_id
             )
 
         except Tenant.DoesNotExist:
 
             return Response(
-
                 {
-
                     "error": "Company not found"
                 },
-
                 status=status.HTTP_404_NOT_FOUND
             )
-
-
 
         tenant.status = "approved"
 
         tenant.save()
 
+        username = (
+            tenant.company_name
+            .lower()
+            .replace(" ", "_")
+        )
 
+        password = "123456"
+
+        if not User.objects.filter(
+            email=tenant.company_email
+        ).exists():
+
+            User.objects.create_user(
+                username=username,
+                email=tenant.company_email,
+                password=password,
+                role="company_admin",
+                tenant=tenant
+            )
+
+        send_company_approval_email.delay(
+            tenant.company_name,
+            tenant.company_email,
+            username,
+            password
+        )
 
         return Response(
-
             {
-
-                "message": "Company approved"
+                "message": "Company approved successfully"
             }
         )
 
