@@ -6,6 +6,9 @@ from .models import Tenant
 from .serializers import TenantSerializer
 from accounts.models import User
 from tenants.tasks import send_company_approval_email
+from datetime import date
+from datetime import timedelta
+from .serializers import SubscriptionSerializer
 
 
 from .serializers import (
@@ -152,9 +155,13 @@ class ApproveCompanyView(APIView):
             )
 
         tenant.status = "approved"
-
+        tenant.subscription_plan = "trial"
+        tenant.subscription_start = date.today()
+        tenant.subscription_end = (
+            date.today() + timedelta(days=30)
+        )
+        tenant.is_trial_used = True
         tenant.save()
-
         username = (
             tenant.company_name
             .lower()
@@ -317,4 +324,21 @@ class UnblockCompanyView(APIView):
 
         return Response(
             {"message": "Company unblocked"}
+        )
+    
+
+class CompanySubscriptionView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        tenant = request.user.tenant
+
+        serializer = SubscriptionSerializer(
+            tenant
+        )
+
+        return Response(
+            serializer.data
         )

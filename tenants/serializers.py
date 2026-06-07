@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from datetime import date
 from .models import Tenant
 
 
@@ -65,3 +65,32 @@ class TenantSerializer(serializers.ModelSerializer):
         model = Tenant
 
         fields = "__all__"
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+
+    days_remaining = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = Tenant
+
+        fields = [
+            "company_name",
+            "subscription_plan",
+            "subscription_start",
+            "subscription_end",
+            "days_remaining",
+            "auto_renew",
+        ]
+
+    def get_days_remaining(self, obj):
+
+        if not obj.subscription_end:
+
+            return 0
+
+        return (
+            obj.subscription_end -
+            date.today()
+        ).days
