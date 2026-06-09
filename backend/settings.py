@@ -169,3 +169,6 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'indiansssss9@gmail.com'
 EMAIL_HOST_PASSWORD = 'tygz nxrm lxxu jhfo'
+
+RAZORPAY_KEY_ID = "rzp_test_SzQkWg6BJfaakD"
+RAZORPAY_KEY_SECRET = "BI3wOI43WI4HqQOjFgXwvm6U"

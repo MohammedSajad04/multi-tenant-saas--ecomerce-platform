@@ -1,14 +1,14 @@
 from django.db import models
 import uuid
-
+from django.utils.text import slugify
 
 class Tenant(models.Model):
 
     BUSINESS_CHOICES = (
 
-        ("mobile", "Mobile"),
-        ("cake", "Cake"),
-        ("perfume", "Perfume"),
+        ("ecommerce", "Ecommerce"),
+        ("service", "Service"),
+        ("hybrid", "Hybrid"),
     )
 
     STATUS_CHOICES = (
@@ -38,7 +38,7 @@ class Tenant(models.Model):
     business_type = models.CharField(
         max_length=50,
         choices=BUSINESS_CHOICES,
-        default="mobile"
+        default="ecommerce"
     )
 
     owner_name = models.CharField(
@@ -71,10 +71,6 @@ class Tenant(models.Model):
         default='pending'
     )
 
-    # ======================
-    # SUBSCRIPTION FIELDS
-    # ======================
-
     subscription_plan = models.CharField(
         max_length=20,
         choices=PLAN_CHOICES,
@@ -105,6 +101,12 @@ class Tenant(models.Model):
 
     def save(self, *args, **kwargs):
 
+        if not self.slug:
+
+            self.slug = slugify(
+                self.company_name
+            )
+
         if not self.registration_number:
 
             unique_id = str(uuid.uuid4())[:8]
@@ -118,3 +120,65 @@ class Tenant(models.Model):
     def __str__(self):
 
         return self.company_name
+
+class SubscriptionPayment(models.Model):
+
+    PLAN_CHOICES = (
+
+        ('monthly', 'Monthly'),
+        ('six_month', 'Six Months'),
+        ('yearly', 'Yearly'),
+    )
+
+    STATUS_CHOICES = (
+
+        ('created', 'Created'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE
+    )
+
+    plan = models.CharField(
+        max_length=20,
+        choices=PLAN_CHOICES
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
+
+    razorpay_order_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    razorpay_payment_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="created"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+
+        return (
+            f"{self.tenant.company_name} - "
+            f"{self.plan} - "
+            f"{self.status}"
+        )
+    

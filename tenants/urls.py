@@ -3,7 +3,10 @@ from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView
 from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
 from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView, 
                     CompanySubscriptionView)
-
+from .views import (
+    CreatePaymentView,
+    VerifyPaymentView
+)
 
 urlpatterns = [
     path(
@@ -43,7 +46,15 @@ urlpatterns = [
         UnblockCompanyView.as_view()
     ),
     path(
-    'subscription/',
-    CompanySubscriptionView.as_view()
-),
+        'subscription/',
+        CompanySubscriptionView.as_view()
+    ),
+    path(
+        "create-payment/",
+        CreatePaymentView.as_view()
+    ),
+    path(
+        "verify-payment/",
+        VerifyPaymentView.as_view()
+    ),
 ]

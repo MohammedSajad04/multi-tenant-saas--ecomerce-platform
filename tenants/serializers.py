@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from datetime import date
 from .models import Tenant
-
+from .models import SubscriptionPayment
 
 
 class TenantRegisterSerializer(serializers.ModelSerializer):
@@ -94,3 +94,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             obj.subscription_end -
             date.today()
         ).days
+    
+
+class SubscriptionPaymentSerializer(
+    serializers.ModelSerializer
+):
+
+    class Meta:
+
+        model = SubscriptionPayment
+
+        fields = "__all__"
+
