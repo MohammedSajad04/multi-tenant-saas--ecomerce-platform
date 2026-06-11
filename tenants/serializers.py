@@ -76,12 +76,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Tenant
 
         fields = [
+
             "company_name",
             "subscription_plan",
             "subscription_start",
             "subscription_end",
             "days_remaining",
             "auto_renew",
+            "is_trial_used",
         ]
 
     def get_days_remaining(self, obj):

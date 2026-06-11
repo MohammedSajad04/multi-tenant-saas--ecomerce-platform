@@ -105,46 +105,63 @@ class SuperAdminCompaniesView(APIView):
         return Response(serializer.data)
 
 
-
-
 class ApproveCompanyView(APIView):
+
     permission_classes = [IsAuthenticated]
+
     def put(self, request, tenant_id):
+
         if not request.user.is_superuser:
+
             return Response(
                 {
                     "error": "Unauthorized"
                 },
                 status=status.HTTP_403_FORBIDDEN
             )
+
         try:
+
             tenant = Tenant.objects.get(
                 id=tenant_id
             )
+
         except Tenant.DoesNotExist:
+
             return Response(
                 {
                     "error": "Company not found"
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+
         tenant.status = "approved"
-        tenant.subscription_plan = "trial"
-        tenant.subscription_start = date.today()
-        tenant.subscription_end = (
-            date.today() + timedelta(days=30)
-        )
-        tenant.is_trial_used = True
+
+        # No trial activation here
+        tenant.subscription_plan = None
+
+        tenant.subscription_start = None
+
+        tenant.subscription_end = None
+
+        tenant.auto_renew = False
+
+        tenant.is_trial_used = False
+
         tenant.save()
+
         username = (
             tenant.company_name
             .lower()
             .replace(" ", "_")
         )
+
         password = "123456"
+
         if not User.objects.filter(
             email=tenant.company_email
         ).exists():
+
             User.objects.create_user(
                 username=username,
                 email=tenant.company_email,
@@ -152,15 +169,18 @@ class ApproveCompanyView(APIView):
                 role="company_admin",
                 tenant=tenant
             )
+
         send_company_approval_email.delay(
             tenant.company_name,
             tenant.company_email,
             username,
             password
         )
+
         return Response(
             {
-                "message": "Company approved successfully"
+                "message":
+                "Company approved successfully"
             }
         )
     
@@ -256,16 +276,30 @@ class UnblockCompanyView(APIView):
         )
     
 class CompanySubscriptionView(APIView):
+
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
+
         tenant = request.user.tenant
+
         serializer = SubscriptionSerializer(
             tenant
         )
+
         return Response(
-            serializer.data
+            {
+                "subscription":
+                    serializer.data,
+
+                "has_active_plan":
+                    (
+                        tenant.subscription_end
+                        and
+                        tenant.subscription_end >= date.today()
+                    )
+            }
         )
-    
 
 class CreatePaymentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -320,29 +354,49 @@ class CreatePaymentView(APIView):
 class VerifyPaymentView(APIView):
 
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
+
         payment_id = request.data.get(
             "payment_id"
         )
+
         razorpay_payment_id = request.data.get(
             "razorpay_payment_id"
         )
+
         razorpay_order_id = request.data.get(
             "razorpay_order_id"
         )
+
         razorpay_signature = request.data.get(
             "razorpay_signature"
         )
-        payment = SubscriptionPayment.objects.get(
-            id=payment_id
-        )
+
+        try:
+
+            payment = SubscriptionPayment.objects.get(
+                id=payment_id
+            )
+
+        except SubscriptionPayment.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "Payment record not found"
+                },
+                status=404
+            )
+
         client = razorpay.Client(
             auth=(
                 settings.RAZORPAY_KEY_ID,
                 settings.RAZORPAY_KEY_SECRET
             )
         )
+
         try:
+
             client.utility.verify_payment_signature(
                 {
                     "razorpay_order_id":
@@ -355,41 +409,110 @@ class VerifyPaymentView(APIView):
                     razorpay_signature,
                 }
             )
-        except:
+
+        except Exception:
+
             payment.status = "failed"
             payment.save()
+
             return Response(
                 {
                     "error": "Payment Failed"
                 },
                 status=400
             )
+
         payment.status = "paid"
+
         payment.razorpay_payment_id = (
             razorpay_payment_id
         )
+
         payment.save()
+
         tenant = payment.tenant
+
         tenant.subscription_plan = (
             payment.plan
         )
+
+        tenant.subscription_start = (
+            date.today()
+        )
+
         tenant.auto_renew = True
+
         if payment.plan == "monthly":
-            tenant.subscription_end += (
+
+            tenant.subscription_end = (
+                date.today() +
                 timedelta(days=30)
             )
+
         elif payment.plan == "six_month":
-            tenant.subscription_end += (
+
+            tenant.subscription_end = (
+                date.today() +
                 timedelta(days=180)
             )
-        else:
-            tenant.subscription_end += (
+
+        elif payment.plan == "yearly":
+
+            tenant.subscription_end = (
+                date.today() +
                 timedelta(days=365)
             )
+
         tenant.save()
+
         return Response(
             {
                 "message":
                 "Payment Successful"
+            }
+        )
+    
+class StartTrialView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        tenant = request.user.tenant
+
+        if not tenant:
+
+            return Response(
+                {
+                    "error": "No company assigned"
+                },
+                status=400
+            )
+
+        if tenant.is_trial_used:
+
+            return Response(
+                {
+                    "error": "Free trial already used"
+                },
+                status=400
+            )
+
+        tenant.subscription_plan = "trial"
+
+        tenant.subscription_start = date.today()
+
+        tenant.subscription_end = (
+            date.today() +
+            timedelta(days=30)
+        )
+
+        tenant.is_trial_used = True
+
+        tenant.save()
+
+        return Response(
+            {
+                "message": "Trial Activated Successfully"
             }
         )

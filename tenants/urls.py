@@ -1,12 +1,8 @@
 from django.urls import path
 from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView )
 from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
-from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView, 
-                    CompanySubscriptionView)
-from .views import (
-    CreatePaymentView,
-    VerifyPaymentView
-)
+from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView,CompanySubscriptionView)
+from .views import ( CreatePaymentView, VerifyPaymentView, StartTrialView )
 
 urlpatterns = [
     path(
@@ -56,5 +52,9 @@ urlpatterns = [
     path(
         "verify-payment/",
         VerifyPaymentView.as_view()
+    ),
+    path(
+        "start-trial/",
+        StartTrialView.as_view()
     ),
 ]
