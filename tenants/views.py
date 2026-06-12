@@ -12,13 +12,10 @@ from .serializers import SubscriptionSerializer
 import razorpay
 from django.conf import settings
 from .models import SubscriptionPayment
-
-from .serializers import (
-
-    TenantRegisterSerializer,
-    TenantSerializer
-)
+from .serializers import TenantDropdownSerializer
+from .serializers import ( TenantRegisterSerializer,TenantSerializer )
 from accounts.models import User
+
 
 class TenantRegisterView(APIView):
     def post(self, request):
@@ -51,6 +48,21 @@ class PendingTenantListView(APIView):
             many=True
         )
         return Response(serializer.data)
+
+class CompanyDropdownView(APIView):
+
+    def get(self, request):
+
+        companies = Tenant.objects.all()
+
+        serializer = TenantDropdownSerializer(
+            companies,
+            many=True
+        )
+
+        return Response(
+            serializer.data
+        )
 
 
 class ApproveTenantView(APIView):

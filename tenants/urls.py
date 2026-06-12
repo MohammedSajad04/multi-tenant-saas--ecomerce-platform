@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView )
+from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView, CompanyDropdownView )
 from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
 from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView,CompanySubscriptionView)
 from .views import ( CreatePaymentView, VerifyPaymentView, StartTrialView )
@@ -57,4 +57,8 @@ urlpatterns = [
         "start-trial/",
         StartTrialView.as_view()
     ),
+    path(
+    "companies-dropdown/",
+    CompanyDropdownView.as_view()
+),
 ]

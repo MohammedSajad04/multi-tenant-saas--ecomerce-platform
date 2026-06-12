@@ -7,6 +7,74 @@ from .serializers import UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from accounts.tasks import send_login_email
+from django.contrib.auth.hashers import make_password
+from tenants.models import Tenant
+from django.contrib.auth.hashers import make_password
+
+
+
+class RegisterView(APIView):
+
+    def post(self, request):
+
+        username = request.data.get("username")
+        email = request.data.get("email")
+        phone = request.data.get("phone")
+        password = request.data.get("password")
+        tenant_id = request.data.get("tenant")
+
+        if User.objects.filter(email=email).exists():
+
+            return Response(
+                {
+                    "error": "Email already exists"
+                },
+                status=400
+            )
+
+        if User.objects.filter(username=username).exists():
+
+            return Response(
+                {
+                    "error": "Username already exists"
+                },
+                status=400
+            )
+
+        tenant = None
+
+        if tenant_id:
+
+            try:
+
+                tenant = Tenant.objects.get(
+                    id=tenant_id
+                )
+
+            except Tenant.DoesNotExist:
+
+                return Response(
+                    {
+                        "error": "Company not found"
+                    },
+                    status=400
+                )
+
+        user = User.objects.create(
+            username=username,
+            email=email,
+            password=make_password(password),
+            role="customer",
+            tenant=tenant
+        )
+
+        return Response(
+            {
+                "message": "Registration Successful"
+            }
+        )
+    
+
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]

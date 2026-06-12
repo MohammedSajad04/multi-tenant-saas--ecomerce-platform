@@ -10,9 +10,10 @@ from .views import (
     ProductDetailView,
     ProductListView,
     MyOrdersView,
-    UpdateOrderStatusView
+    UpdateOrderStatusView,
+    CreateOrderPaymentView,
+    VerifyOrderPaymentView,
 )
-
 
 
 urlpatterns = [
@@ -71,8 +72,23 @@ urlpatterns = [
 
         CompanyCustomersView.as_view()
     ),
-    path('my-orders/',MyOrdersView.as_view()
+    path(
+        'my-orders/',
+        MyOrdersView.as_view()
     ),
-    path('update-order/<int:order_id>/', UpdateOrderStatusView.as_view()
-    )
+
+    path(
+        'update-order/<int:order_id>/',
+        UpdateOrderStatusView.as_view()
+    ),
+
+    path(
+        "create-payment/",
+        CreateOrderPaymentView.as_view()
+    ),
+
+    path(
+        "verify-payment/",
+        VerifyOrderPaymentView.as_view()
+    ),
 ]

@@ -4,12 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .order_serializers import OrderSerializer
 from .serializers import ProductSerializer
-from .models import (
-
-    Product,
-    Order
-)
-
+from .models import ( Product, Order )
+import razorpay
+from django.conf import settings
+from datetime import date, timedelta
 
 
 class ProductCreateView(APIView):
@@ -146,6 +144,9 @@ class ProductDetailView(APIView):
 
             return Response(serializer.data)
 
+        print("========== ERRORS ==========")
+        print(serializer.errors)
+
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
@@ -221,9 +222,6 @@ class CreateOrderView(APIView):
             )
 
         total_price = product.price * quantity
-
-        product.stock -= quantity
-        product.save()
 
         order = Order.objects.create(
 
@@ -461,3 +459,106 @@ class UpdateOrderStatusView(APIView):
         serializer = ProductSerializer(product)
 
         return Response(serializer.data)
+    
+
+class CreateOrderPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        order_id = request.data.get("order_id")
+
+        try:
+            order = Order.objects.get(
+                id=order_id,
+                user=request.user
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Order not found"},
+                status=404
+            )
+
+        client = razorpay.Client(
+            auth=(
+                settings.RAZORPAY_KEY_ID,
+                settings.RAZORPAY_KEY_SECRET
+            )
+        )
+
+        razorpay_order = client.order.create({
+            "amount": int(order.total_price * 100),
+            "currency": "INR",
+            "payment_capture": 1,
+        })
+
+        order.razorpay_order_id = razorpay_order["id"]
+        order.save()
+
+        return Response({
+            "db_order_id": order.id,
+            "order_id": razorpay_order["id"],
+            "amount": int(order.total_price * 100),
+            "key": settings.RAZORPAY_KEY_ID,
+        })
+    
+
+class VerifyOrderPaymentView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        order = Order.objects.get(
+            id=request.data.get("db_order_id")
+        )
+
+        client = razorpay.Client(
+            auth=(
+                settings.RAZORPAY_KEY_ID,
+                settings.RAZORPAY_KEY_SECRET
+            )
+        )
+
+        try:
+
+            client.utility.verify_payment_signature({
+
+                "razorpay_order_id":
+                request.data.get("razorpay_order_id"),
+
+                "razorpay_payment_id":
+                request.data.get("razorpay_payment_id"),
+
+                "razorpay_signature":
+                request.data.get("razorpay_signature"),
+
+            })
+
+        except:
+
+            return Response(
+                {"error": "Payment Failed"},
+                status=400
+            )
+
+        order.payment_status = "paid"
+        order.status = "confirmed"
+
+        product = order.product
+
+        product.stock -= order.quantity
+
+        product.save()
+
+        order.razorpay_payment_id = (
+            request.data.get(
+                "razorpay_payment_id"
+            )
+        )
+
+        order.save()
+
+        return Response({
+            "message": "Payment Successful"
+        })

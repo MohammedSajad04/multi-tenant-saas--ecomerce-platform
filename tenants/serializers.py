@@ -108,3 +108,19 @@ class SubscriptionPaymentSerializer(
 
         fields = "__all__"
 
+from rest_framework import serializers
+from .models import Tenant
+
+
+class TenantDropdownSerializer(
+    serializers.ModelSerializer
+):
+
+    class Meta:
+
+        model = Tenant
+
+        fields = [
+            "id",
+            "company_name"
+        ]
