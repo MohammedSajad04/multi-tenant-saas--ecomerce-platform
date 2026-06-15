@@ -23,3 +23,6 @@ class User(AbstractUser):
         max_length=50,
         choices=ROLE_CHOICES
     )
+    is_blocked = models.BooleanField(
+    default=False
+    )

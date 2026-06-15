@@ -1,8 +1,8 @@
 from django.urls import path
-from .views import ( TenantRegisterView, PendingTenantListView,ApproveTenantView, CompanyDropdownView )
+from .views import ( CompanySubscriptionHistoryView, PlatformAnalyticsView, SuperAdminDashboardView, TenantRegisterView, PendingTenantListView,ApproveTenantView, CompanyDropdownView )
 from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
 from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView,CompanySubscriptionView)
-from .views import ( CreatePaymentView, VerifyPaymentView, StartTrialView )
+from .views import ( CreatePaymentView, VerifyPaymentView, StartTrialView, PlatformSubscriptionsView )
 
 urlpatterns = [
     path(
@@ -58,7 +58,23 @@ urlpatterns = [
         StartTrialView.as_view()
     ),
     path(
-    "companies-dropdown/",
-    CompanyDropdownView.as_view()
-),
+        "companies-dropdown/",
+        CompanyDropdownView.as_view()
+    ),
+    path(
+        "platform-subscriptions/",
+        PlatformSubscriptionsView.as_view()
+    ),
+    path(
+        "analytics/",
+        PlatformAnalyticsView.as_view()
+    ),
+    path(
+        "superadmin/dashboard/",
+        SuperAdminDashboardView.as_view()
+    ),
+    path(
+        "subscription-history/<int:company_id>/",
+        CompanySubscriptionHistoryView.as_view()
+    ),
 ]
