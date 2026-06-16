@@ -395,3 +395,37 @@ class CompanyUsersByCompanyView(APIView):
             "users":
             data
         })
+    
+class UnblockUserView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, user_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=403
+            )
+
+        try:
+
+            user = User.objects.get(
+                id=user_id
+            )
+
+        except User.DoesNotExist:
+
+            return Response(
+                {"error": "User not found"},
+                status=404
+            )
+
+        user.is_blocked = False
+
+        user.save()
+
+        return Response({
+            "message": "User unblocked successfully"
+        })

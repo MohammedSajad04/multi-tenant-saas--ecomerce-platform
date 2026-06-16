@@ -1,6 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import ( TokenRefreshView )
-from .views import ( CompanySummaryView, CompanyUsersByCompanyView, CompanyUsersView, CurrentUserView, SuperAdminUsersView, ChangeUserRoleView, LoginView )
+from .views import ( CompanySummaryView, CompanyUsersByCompanyView, CompanyUsersView, CurrentUserView, SuperAdminUsersView, ChangeUserRoleView, LoginView, UnblockUserView )
 from .views import RegisterView
 from .views import BlockUserView
 
@@ -51,4 +51,8 @@ urlpatterns = [
         "superadmin/company-users/<int:company_id>/",
         CompanyUsersByCompanyView.as_view()
     ),
+    path(
+        "unblock-user/<int:user_id>/",
+         UnblockUserView.as_view()
+),
 ]
