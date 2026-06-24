@@ -45,7 +45,9 @@ class Tenant(models.Model):
         max_length=255
     )
 
-    company_email = models.EmailField()
+    company_email = models.EmailField(
+    unique=True
+    )
 
     phone_number = models.CharField(
         max_length=20

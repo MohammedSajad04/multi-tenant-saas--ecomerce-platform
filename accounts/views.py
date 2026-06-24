@@ -215,6 +215,16 @@ class BlockUserView(APIView):
                 status=404
             )
 
+        if user.role == "company_admin":
+
+            return Response(
+                {
+                    "error":
+                    "Company Admin cannot be blocked"
+                },
+                status=400
+            )
+
         user.is_blocked = True
 
         user.save()

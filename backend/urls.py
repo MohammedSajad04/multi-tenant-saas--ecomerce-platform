@@ -29,7 +29,7 @@ urlpatterns = [
 
         include('products.urls')
     ),
-
+    path("api/ai/", include("core.urls"))
 ]
 
 urlpatterns += static(
