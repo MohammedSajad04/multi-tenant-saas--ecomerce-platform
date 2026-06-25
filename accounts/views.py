@@ -75,12 +75,31 @@ class RegisterView(APIView):
         )
     
 
-
 class CurrentUserView(APIView):
+
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
+
+        user = request.user
+
+        return Response({
+
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+
+            "tenant":
+                user.tenant.id
+                if user.tenant
+                else None,
+
+            "tenant_name":
+                user.tenant.company_name
+                if user.tenant
+                else None
+        })
     
 class SuperAdminUsersView(APIView):
     permission_classes = [IsAuthenticated]
@@ -135,30 +154,27 @@ class ChangeUserRoleView(APIView):
         )
 
 class LoginView(APIView):
+
     def post(self, request):
+
         email = request.data.get("email")
-        username = request.data.get("username")
         password = request.data.get("password")
 
-        if not password or not (email or username):
-            return Response(
-                {"error": "Invalid Credentials"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        print("EMAIL:", email)
+        print("PASSWORD:", password)
 
-        if email:
-            user_record = User.objects.filter(
-                email__iexact=email
-            ).first()
-        else:
-            user_record = User.objects.filter(
-                username=username
-            ).first()
+        user_record = User.objects.filter(
+            email__iexact=email
+        ).first()
 
         if not user_record:
+
             return Response(
-                {"error": "Invalid Credentials"},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error":
+                    "User not found"
+                },
+                status=400
             )
 
         user = authenticate(
@@ -168,25 +184,49 @@ class LoginView(APIView):
         )
 
         if not user:
+
             return Response(
-                {"error": "Invalid Credentials"},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error":
+                    "Password incorrect"
+                },
+                status=400
             )
 
-        if user.is_blocked:
-            return Response(
-                { "error": "Your account has been blocked" },
-                status=403
-            )
-        
         refresh = RefreshToken.for_user(user)
-        send_login_email.delay(
-            user.email
-        )
 
         return Response({
-            "refresh": str(refresh),
-            "access": str(refresh.access_token)
+
+            "refresh":
+            str(refresh),
+
+            "access":
+            str(refresh.access_token),
+
+            "user": {
+
+                "id":
+                user.id,
+
+                "username":
+                user.username,
+
+                "email":
+                user.email,
+
+                "role":
+                user.role,
+
+                "tenant_id":
+                user.tenant.id
+                if user.tenant
+                else None,
+
+                "company_name":
+                user.tenant.company_name
+                if user.tenant
+                else None,
+            }
         })
 
 class BlockUserView(APIView):
