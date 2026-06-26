@@ -1,5 +1,7 @@
 from django.db import models
+
 from tenants.models import Tenant
+from accounts.models import User
 
 
 class ChatHistory(models.Model):
@@ -8,6 +10,13 @@ class ChatHistory(models.Model):
         Tenant,
         on_delete=models.CASCADE
     )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+        )
 
     question = models.TextField()
 
@@ -18,4 +27,5 @@ class ChatHistory(models.Model):
     )
 
     def __str__(self):
+
         return self.question

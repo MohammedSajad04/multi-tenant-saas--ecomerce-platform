@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 
 from core.models import ChatHistory
 from .ai_service import ask_ai
@@ -7,43 +8,51 @@ from .ai_service import ask_ai
 
 class AIChatView(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
 
-        print("REQUEST DATA:", request.data)
+        company_id = request.data.get(
+            "company_id"
+        )
 
-        company_id = request.data.get("company_id")
-        question = request.data.get("question")
+        question = request.data.get(
+            "question"
+        )
 
         result = ask_ai(
             company_id,
-            question
+            question,
+            request.user.id
         )
 
         ChatHistory.objects.create(
             tenant_id=company_id,
+            user=request.user,
             question=question,
             answer=result["answer"]
         )
 
         return Response(result)
 
-    def get(self, request):
 
-        return Response({
-            "message": "AI endpoint working"
-        })
-    
 class ChatHistoryView(APIView):
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, tenant_id):
 
         chats = ChatHistory.objects.filter(
-            tenant_id=tenant_id
-        ).order_by("-created_at")
+            tenant_id=tenant_id,
+            user=request.user
+        ).order_by(
+            "-created_at"
+        )
 
         data = []
 
         for chat in chats:
+
             data.append({
                 "question": chat.question,
                 "answer": chat.answer,

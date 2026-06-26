@@ -46,6 +46,12 @@ class Product(models.Model):
         decimal_places=2
     )
 
+    brand = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+    
     stock = models.IntegerField()
 
     image = models.ImageField(

@@ -8,7 +8,8 @@ from .models import ( Product, Order )
 import razorpay
 from django.conf import settings
 from datetime import date, timedelta
-
+from django.db.models import Q
+from .pagination import ProductPagination
 
 class ProductCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -39,25 +40,85 @@ class ProductCreateView(APIView):
         )
 
 
-
 class ProductListView(APIView):
 
     def get(self, request):
 
-        tenant_id = request.GET.get("tenant")
+        tenant_id = request.GET.get(
+            "tenant"
+        )
+
+        search = request.GET.get(
+            "search"
+        )
+
+        category = request.GET.get(
+            "category"
+        )
+
+        min_price = request.GET.get(
+            "min_price"
+        )
+
+        max_price = request.GET.get(
+            "max_price"
+        )
 
         products = Product.objects.filter(
             tenant_id=tenant_id,
             tenant__status="approved"
         )
 
+        if search:
+
+            products = products.filter(
+
+                Q(name__icontains=search)
+
+                |
+
+                Q(description__icontains=search)
+            )
+
+        if category:
+
+            products = products.filter(
+                category__iexact=category
+            )
+
+        if min_price:
+
+            products = products.filter(
+                price__gte=min_price
+            )
+
+        if max_price:
+
+            products = products.filter(
+                price__lte=max_price
+            )
+
+        products = products.order_by(
+            "-created_at"
+        )
+
+        paginator = ProductPagination()
+
+        paginated_products = (
+            paginator.paginate_queryset(
+                products,
+                request
+            )
+        )
+
         serializer = ProductSerializer(
-            products,
+            paginated_products,
             many=True
         )
 
-        return Response(serializer.data)
-
+        return paginator.get_paginated_response(
+            serializer.data
+        )
 
 class CompanyProductsView(APIView):
 
