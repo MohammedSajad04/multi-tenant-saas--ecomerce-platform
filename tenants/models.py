@@ -68,11 +68,34 @@ class Tenant(models.Model):
     )
 
     status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending'
+    max_length=20,
+    choices=STATUS_CHOICES,
+    default="pending"
     )
 
+    rejection_reason = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    blocked_reason = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    deleted_reason = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    is_deleted = models.BooleanField(
+        default=False
+    )
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
     subscription_plan = models.CharField(
         max_length=20,
         choices=PLAN_CHOICES,
@@ -180,6 +203,20 @@ class SubscriptionPayment(models.Model):
 
     created_at = models.DateTimeField(
         auto_now_add=True
+    )
+
+    rejection_reason = models.TextField(
+    blank=True,
+    null=True
+    )
+    blocked_reason = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    deleted_reason = models.TextField(
+        blank=True,
+        null=True
     )
 
     def __str__(self):

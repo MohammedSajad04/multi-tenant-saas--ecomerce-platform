@@ -3,18 +3,17 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Tenant
-from .serializers import TenantSerializer
 from accounts.models import User
-from tenants.tasks import send_company_approval_email
-from datetime import date, timezone
+from datetime import date
 from datetime import timedelta
 from .serializers import SubscriptionSerializer
 import razorpay
 from django.conf import settings
+from django.core.mail import send_mail
+from django.utils import timezone
 from .models import SubscriptionPayment
 from .serializers import TenantDropdownSerializer
 from .serializers import ( TenantRegisterSerializer,TenantSerializer )
-from accounts.models import User
 from products.models import Order
 
 
@@ -24,7 +23,17 @@ class TenantRegisterView(APIView):
             data=request.data
         )
         if serializer.is_valid():
-            serializer.save()
+            try:
+                serializer.save()
+
+            except Exception as e:
+
+                return Response(
+                    {
+                        "error": str(e)
+                    },
+                    status=400
+                )
             return Response(
                 {
                     "message": "Company registration request submitted successfully"
@@ -42,7 +51,8 @@ class PendingTenantListView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         tenants = Tenant.objects.filter(
-            status='pending'
+            status='pending',
+            is_deleted = False
         )
         serializer = TenantSerializer(
             tenants,
@@ -54,7 +64,10 @@ class CompanyDropdownView(APIView):
 
     def get(self, request):
 
-        companies = Tenant.objects.all()
+        companies = Tenant.objects.filter(
+        status="approved",
+        is_deleted=False
+    )
 
         serializer = TenantDropdownSerializer(
             companies,
@@ -66,65 +79,45 @@ class CompanyDropdownView(APIView):
         )
 
 
-class ApproveTenantView(APIView):
-    permission_classes = [IsAuthenticated]
-    def post(self, request, tenant_id):
-        try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
-        except Tenant.DoesNotExist:
-            return Response(
-                {
-                    "error": "Tenant not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        tenant.status = "approved"
-        tenant.save()
-        username = tenant.company_name.lower().replace(" ", "_")
-        password = "123456"
-        company_admin = User.objects.create_user(
-            username=username,
-            email=tenant.company_email,
-            password=password,
-            role='company_admin',
-            tenant=tenant
-        )
-        return Response(
-            {
-                "message": "Tenant approved successfully",
-                "company_admin_username": username,
-                "password": password
-            },
-            status=status.HTTP_200_OK
-        )
-
-class SuperAdminCompaniesView(APIView):
-    permission_classes = [IsAuthenticated]
-    def get(self, request):
-        if not request.user.is_superuser:
-            return Response(
-                {
-                    "error": "Unauthorized"
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-        tenants = Tenant.objects.all()
-        serializer = TenantSerializer(
-            tenants,
-            many=True
-        )
-        return Response(serializer.data)
-
+# class ApproveTenantView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     def post(self, request, tenant_id):
+#         try:
+#             tenant = Tenant.objects.get(
+#                 id=tenant_id
+#             )
+#         except Tenant.DoesNotExist:
+#             return Response(
+#                 {
+#                     "error": "Tenant not found"
+#                 },
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#         tenant.status = "approved"
+#         tenant.save()
+#         username = tenant.company_name.lower().replace(" ", "_")
+#         password = "123456"
+#         company_admin = User.objects.create_user(
+#             username=username,
+#             email=tenant.company_email,
+#             password=password,
+#             role='company_admin',
+#             tenant=tenant
+#         )
+#         return Response(
+#             {
+#                 "message": "Tenant approved successfully",
+#                 "company_admin_username": username,
+#                 "password": password
+#             },
+#             status=status.HTTP_200_OK
+#         )
 
 class ApproveCompanyView(APIView):
 
     permission_classes = [IsAuthenticated]
 
     def put(self, request, tenant_id):
-
-        print("APPROVE STARTED")
 
         if not request.user.is_superuser:
             return Response(
@@ -133,9 +126,8 @@ class ApproveCompanyView(APIView):
             )
 
         try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
+            tenant = Tenant.objects.get(id=tenant_id)
+
         except Tenant.DoesNotExist:
             return Response(
                 {"error": "Company not found"},
@@ -166,99 +158,95 @@ class ApproveCompanyView(APIView):
                 tenant=tenant
             )
 
-        username = tenant.company_name.lower().replace(" ", "_")
+        send_mail(
+            subject="Company Approved",
+            message=f"""
+Hello {tenant.owner_name},
 
-        password = "123456"
+Congratulations!
 
-        if not User.objects.filter(
-            email=tenant.company_email
-        ).exists():
+Your company has been approved.
 
-            User.objects.create_user(
-                username=username,
-                email=tenant.company_email,
-                password=password,
-                role="company_admin",
-                tenant=tenant
-            )
-            print("TENANT SAVED")
+Login Email:
+{tenant.company_email}
 
-            print("RETURNING SUCCESS")
+Temporary Password:
+{password}
 
-            return Response({
+Regards,
+SaaS Platform Team
+""",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[tenant.company_email],
+            fail_silently=True
+        )
+
+        return Response(
+            {
                 "message": "Company approved successfully"
-            })
+            },
+            status=status.HTTP_200_OK
+        )
             
+
+class SuperAdminCompaniesView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        companies = Tenant.objects.filter(
+            is_deleted=False
+        ).order_by("-created_at")
+
+        serializer = TenantSerializer(
+            companies,
+            many=True
+        )
+
+        return Response(serializer.data)
 
 class CompanyDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request, tenant_id):
+        # Check if user is superuser
         if not request.user.is_superuser:
             return Response(
                 {"error": "Unauthorized"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
-        except Tenant.DoesNotExist:
+
+        # Fetch the company with the new conditions
+        company = Tenant.objects.filter(
+            id=tenant_id,
+            is_deleted=False
+        ).first()
+
+        # Handle case where company is not found or doesn't meet conditions
+        if not company:
             return Response(
-                {"error": "Company not found"},
+                {"error": "Company not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
-        serializer = TenantSerializer(tenant)
+
+        # Serialize and return the data
+        serializer = TenantSerializer(company)
         return Response(serializer.data)
     
 class RejectCompanyView(APIView):
+
     permission_classes = [IsAuthenticated]
+
     def put(self, request, tenant_id):
-        if not request.user.is_superuser:
-            return Response(
-                {"error": "Unauthorized"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
-        except Tenant.DoesNotExist:
-            return Response(
-                {"error": "Company not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        tenant.status = "rejected"
-        tenant.save()
-        return Response(
-            {"message": "Company rejected"}
-        )
-    
-class BlockCompanyView(APIView):
-    permission_classes = [IsAuthenticated]
-    def put(self, request, tenant_id):
-        if not request.user.is_superuser:
-            return Response(
-                {"error": "Unauthorized"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
-        except Tenant.DoesNotExist:
-            return Response(
-                {"error": "Company not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        tenant.status = "blocked"
-        tenant.save()
-        return Response(
-            {"message": "Company blocked"}
-        )
-    
-class UnblockCompanyView(APIView):
-    permission_classes = [IsAuthenticated]
-    def put(self, request, tenant_id):
+
         if not request.user.is_superuser:
             return Response(
                 {"error": "Unauthorized"},
@@ -266,19 +254,231 @@ class UnblockCompanyView(APIView):
             )
 
         try:
-            tenant = Tenant.objects.get(
-                id=tenant_id
-            )
+            tenant = Tenant.objects.get(id=tenant_id)
+
         except Tenant.DoesNotExist:
+
             return Response(
                 {"error": "Company not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
-        tenant.status = "approved"
-        tenant.save()
-        return Response(
-            {"message": "Company unblocked"}
+
+        reason = request.data.get(
+            "reason",
+            "No reason provided."
         )
+
+        tenant.status = "rejected"
+        tenant.rejection_reason = reason
+        tenant.save()
+
+        send_mail(
+            subject="Company Registration Rejected",
+            message=f"""
+        Hello {tenant.owner_name},
+
+        Unfortunately your company registration has been rejected.
+
+        Reason:
+
+        {reason}
+
+        If you believe this is a mistake you may contact support.
+
+        Regards,
+        SaaS Platform Team
+        """,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[tenant.company_email],
+            fail_silently=True,
+        )
+
+        return Response({
+            "message": "Company rejected successfully"
+        })
+    
+class BlockCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+            return Response(
+                {"error": "Unauthorized"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            tenant = Tenant.objects.get(id=tenant_id)
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        reason = request.data.get(
+            "reason",
+            "No reason provided."
+        )
+
+        tenant.status = "blocked"
+        tenant.blocked_reason = reason
+        tenant.rejection_reason = ""
+        tenant.save()
+
+        User.objects.filter(
+            tenant=tenant
+        ).update(
+            is_blocked=True
+        )
+
+        send_mail(
+            subject="Company Blocked",
+            message=f"""
+        Hello {tenant.owner_name},
+
+        Your company has been blocked.
+
+        Reason:
+
+        {reason}
+
+        Please contact support.
+
+        Regards,
+        SaaS Platform Team
+        """,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[tenant.company_email],
+            fail_silently=True,
+        )
+
+        return Response({
+            "message": "Company blocked successfully"
+        })
+
+class UnblockCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=403
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(id=tenant_id)
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=404
+            )
+
+        tenant.status = "approved"
+        tenant.blocked_reason = ""
+        tenant.rejection_reason = ""
+        tenant.save()
+
+        User.objects.filter(
+            tenant=tenant
+        ).update(
+            is_blocked=False
+        )
+
+        send_mail(
+            subject="Company Unblocked",
+            message=f"""
+        Hello {tenant.owner_name},
+
+        Your company has been unblocked.
+
+        You may now access the platform again.
+
+        Regards,
+        SaaS Platform Team
+        """,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[tenant.company_email],
+            fail_silently=True,
+        )
+
+        return Response({
+            "message": "Company unblocked successfully"
+        })
+    
+class DeleteCompanyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, tenant_id):
+
+        if not request.user.is_superuser:
+
+            return Response(
+                {"error": "Unauthorized"},
+                status=403
+            )
+
+        try:
+
+            tenant = Tenant.objects.get(id=tenant_id)
+
+        except Tenant.DoesNotExist:
+
+            return Response(
+                {"error": "Company not found"},
+                status=404
+            )
+
+        reason = request.data.get(
+            "reason",
+            "No reason provided."
+        )
+
+        tenant.deleted_reason = reason
+        tenant.is_deleted = True
+        tenant.deleted_at = timezone.now()
+        tenant.save()
+
+        User.objects.filter(
+            tenant=tenant
+        ).update(
+            is_blocked=True
+        )
+
+        send_mail(
+            subject="Company Deleted",
+            message=f"""
+        Hello {tenant.owner_name},
+
+        Your company account has been deleted.
+
+        Reason:
+
+        {reason}
+
+        Regards,
+        SaaS Platform Team
+        """,
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[tenant.company_email],
+            fail_silently=True,
+        )
+
+        return Response({
+            "message": "Company deleted successfully"
+        })
+
     
 class CompanySubscriptionView(APIView):
 
@@ -286,7 +486,14 @@ class CompanySubscriptionView(APIView):
 
     def get(self, request):
 
-        tenant = request.user.tenant
+        tenant=request.user.tenant
+
+        if not tenant:
+
+            return Response(
+                {"error":"No company assigned"},
+                status=400
+            )
 
         serializer = SubscriptionSerializer(
             tenant
@@ -310,6 +517,13 @@ class CreatePaymentView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         tenant = request.user.tenant
+        if not tenant:
+            return Response(
+                {
+                    "error":"No company assigned"
+                },
+                status=400
+            )
         plan = request.data.get(
             "plan"
         )
@@ -437,6 +651,14 @@ class VerifyPaymentView(APIView):
 
         tenant = payment.tenant
 
+        if not tenant:
+            return Response(
+                {
+                    "error":"Tenant not found"
+                },
+                status=404
+            )
+
         tenant.subscription_plan = (
             payment.plan
         )
@@ -536,7 +758,9 @@ class PlatformSubscriptionsView(APIView):
                 status=403
             )
 
-        subscriptions = SubscriptionPayment.objects.select_related(
+        subscriptions = SubscriptionPayment.objects.filter(
+            tenant__is_deleted=False
+        ).select_related(
             "tenant"
         ).order_by("-created_at")
 
@@ -657,7 +881,9 @@ class PlatformAnalyticsView(APIView):
             User.objects.count(),
 
             "total_companies":
-            Tenant.objects.count(),
+            Tenant.objects.filter(
+                is_deleted=False
+            ).count(),
 
             "active_subscriptions":
             active_subscriptions,
@@ -697,10 +923,14 @@ class SuperAdminDashboardView(APIView):
         return Response({
 
             "tenant_count":
-            Tenant.objects.count(),
+            Tenant.objects.filter(
+                is_deleted=False
+            ).count(),
 
             "user_count":
-            User.objects.count(),
+            User.objects.filter(
+                is_blocked=False
+            ).count(),
 
             "order_count":
             Order.objects.count(),

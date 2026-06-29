@@ -6,11 +6,9 @@ from .models import User
 from .serializers import UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from accounts.tasks import send_login_email
+# from accounts.tasks import send_login_email
 from django.contrib.auth.hashers import make_password
 from tenants.models import Tenant
-from django.contrib.auth.hashers import make_password
-
 
 
 class RegisterView(APIView):
@@ -55,10 +53,91 @@ class RegisterView(APIView):
 
                 return Response(
                     {
-                        "error": "Company not found"
+                        "error": "Company not found."
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # -----------------------------
+            # Deleted Company
+            # -----------------------------
+
+            if tenant.is_deleted:
+
+                return Response(
+                    {
+                        "error": "This company has been deleted."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # -----------------------------
+            # Rejected Company
+            # -----------------------------
+
+            if tenant.status == "rejected":
+
+                return Response(
+                    {
+                        "error": "This company registration has been rejected."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # -----------------------------
+            # Blocked Company
+            # -----------------------------
+
+            if tenant.status == "blocked":
+
+                return Response(
+                    {
+                        "error": "This company is currently blocked."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # -----------------------------
+            # Pending Company
+            # -----------------------------
+
+            if tenant.status == "pending":
+
+                return Response(
+                    {
+                        "error": "This company has not been approved yet."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            if not username:
+
+                return Response(
+                    {
+                        "error": "Username is required."
                     },
                     status=400
                 )
+
+            if not email:
+
+                return Response(
+                    {
+                        "error": "Email is required."
+                    },
+                    status=400
+                )
+
+            if not password:
+
+                return Response(
+                    {
+                        "error": "Password is required."
+                    },
+                    status=400
+                )
+
+
 
         user = User.objects.create(
             username=username,
@@ -171,10 +250,9 @@ class LoginView(APIView):
 
             return Response(
                 {
-                    "error":
-                    "User not found"
+                    "error": "User not found"
                 },
-                status=400
+                status=status.HTTP_404_NOT_FOUND
             )
 
         user = authenticate(
@@ -187,46 +265,108 @@ class LoginView(APIView):
 
             return Response(
                 {
-                    "error":
-                    "Password incorrect"
+                    "error": "Password incorrect"
                 },
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
             )
 
+        # -----------------------------
+        # User Block Check
+        # -----------------------------
+        if user.is_blocked:
+
+            return Response(
+                {
+                    "error": "Your account has been blocked."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # -----------------------------
+        # Tenant Status Check
+        # -----------------------------
+        if user.tenant is not None:
+
+            # Deleted Company
+            if user.tenant.is_deleted:
+
+                return Response(
+                    {
+                        "error": "This company has been deleted."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Blocked Company
+            if user.tenant.status == "blocked":
+
+                return Response(
+                    {
+                        "error": "Your company has been blocked.",
+                        "reason": user.tenant.blocked_reason
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Rejected Company
+            if user.tenant.status == "rejected":
+
+                return Response(
+                    {
+                        "error": "Your company registration was rejected.",
+                        "reason": user.tenant.rejection_reason
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Pending Company
+            if user.tenant.status == "pending":
+
+                return Response(
+                    {
+                        "error": "Your company is awaiting approval."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # -----------------------------
+        # Generate JWT Tokens
+        # -----------------------------
         refresh = RefreshToken.for_user(user)
+
+        # Optional Login Email
+        # send_login_email.delay(user.email)
 
         return Response({
 
-            "refresh":
-            str(refresh),
+            "refresh": str(refresh),
 
-            "access":
-            str(refresh.access_token),
+            "access": str(refresh.access_token),
 
             "user": {
 
-                "id":
-                user.id,
+                "id": user.id,
 
-                "username":
-                user.username,
+                "username": user.username,
 
-                "email":
-                user.email,
+                "email": user.email,
 
-                "role":
-                user.role,
+                "role": user.role,
 
-                "tenant_id":
-                user.tenant.id
-                if user.tenant
-                else None,
+                "tenant_id": (
+                    user.tenant.id
+                    if user.tenant
+                    else None
+                ),
 
-                "company_name":
-                user.tenant.company_name
-                if user.tenant
-                else None,
+                "company_name": (
+                    user.tenant.company_name
+                    if user.tenant
+                    else None
+                ),
+
             }
+
         })
 
 class BlockUserView(APIView):
@@ -255,12 +395,11 @@ class BlockUserView(APIView):
                 status=404
             )
 
-        if user.role == "company_admin":
+        if user.role in ["company_admin", "super_admin"]:
 
             return Response(
                 {
-                    "error":
-                    "Company Admin cannot be blocked"
+                    "error": "This user cannot be blocked."
                 },
                 status=400
             )
@@ -289,7 +428,9 @@ class CompanyUsersView(APIView):
                 status=403
             )
 
-        companies = Tenant.objects.all()
+        companies = Tenant.objects.filter(
+            is_deleted=False
+        )
 
         data = []
 
@@ -353,7 +494,9 @@ class CompanySummaryView(APIView):
                 status=403
             )
 
-        companies = Tenant.objects.all()
+        companies = Tenant.objects.filter(
+            is_deleted=False
+        )
 
         data = []
 

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ( CompanySubscriptionHistoryView, PlatformAnalyticsView, SuperAdminDashboardView, TenantRegisterView, PendingTenantListView,ApproveTenantView, CompanyDropdownView )
+from .views import ( CompanySubscriptionHistoryView, DeleteCompanyView, PlatformAnalyticsView, SuperAdminDashboardView, TenantRegisterView, PendingTenantListView, CompanyDropdownView )
 from .views import ( SuperAdminCompaniesView, ApproveCompanyView )
 from .views import ( CompanyDetailView, RejectCompanyView ,BlockCompanyView ,UnblockCompanyView,CompanySubscriptionView)
 from .views import ( CreatePaymentView, VerifyPaymentView, StartTrialView, PlatformSubscriptionsView )
@@ -14,12 +14,8 @@ urlpatterns = [
         PendingTenantListView.as_view()
     ),
     path(
-        'approve/<int:tenant_id>/',
-        ApproveTenantView.as_view()
-    ),
-    path(
-    'superadmin/companies/',
-    SuperAdminCompaniesView.as_view()
+        'superadmin/companies/',
+        SuperAdminCompaniesView.as_view()
     ),
     path(
         'superadmin/approve/<int:tenant_id>/',
@@ -40,6 +36,10 @@ urlpatterns = [
     path(
         "superadmin/unblock/<int:tenant_id>/",
         UnblockCompanyView.as_view()
+    ),
+    path(
+        "superadmin/delete/<int:tenant_id>/",
+        DeleteCompanyView.as_view()
     ),
     path(
         'subscription/',

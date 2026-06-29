@@ -10,11 +10,69 @@ from django.conf import settings
 from datetime import date, timedelta
 from django.db.models import Q
 from .pagination import ProductPagination
+from tenants.models import Tenant
+
+
+def validate_company_access(user):
+
+    if not user.tenant:
+
+        return Response(
+            {
+                "error": "Company account required."
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    tenant = user.tenant
+
+    if tenant.is_deleted:
+
+        return Response(
+            {
+                "error": "This company has been deleted."
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if tenant.status == "blocked":
+
+        return Response(
+            {
+                "error": "This company has been blocked.",
+                "reason": tenant.blocked_reason
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if tenant.status == "rejected":
+
+        return Response(
+            {
+                "error": "This company has been rejected.",
+                "reason": tenant.rejection_reason
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if tenant.status == "pending":
+
+        return Response(
+            {
+                "error": "Company approval is still pending."
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    return None
+
 
 class ProductCreateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        if not request.user.tenant:
+        response = validate_company_access(request.user)
+
+        if response:
             return Response(
                 {
                     "error": "Company account required"
@@ -41,76 +99,63 @@ class ProductCreateView(APIView):
 
 
 class ProductListView(APIView):
-
     def get(self, request):
+        tenant_id = request.GET.get("tenant")
 
-        tenant_id = request.GET.get(
-            "tenant"
-        )
+        # 1. Tenant Validation (Check if company exists, is approved, and not deleted)
+        tenant = Tenant.objects.filter(
+            id=tenant_id,
+            status="approved",
+            is_deleted=False
+        ).first()
 
-        search = request.GET.get(
-            "search"
-        )
+        if not tenant:
+            return Response(
+                {"error": "Company unavailable."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        category = request.GET.get(
-            "category"
-        )
+        # 2. Get the rest of the query parameters
+        search = request.GET.get("search")
+        category = request.GET.get("category")
+        min_price = request.GET.get("min_price")
+        max_price = request.GET.get("max_price")
 
-        min_price = request.GET.get(
-            "min_price"
-        )
-
-        max_price = request.GET.get(
-            "max_price"
-        )
-
-        products = Product.objects.filter(
-            tenant_id=tenant_id,
-            tenant__status="approved"
-        )
+        # 3. Filter products
+        # We can now just filter by the validated tenant object
+        products = Product.objects.filter(tenant=tenant)
 
         if search:
-
             products = products.filter(
-
-                Q(name__icontains=search)
-
-                |
-
+                Q(name__icontains=search) |
                 Q(description__icontains=search)
             )
 
         if category:
-
             products = products.filter(
                 category__iexact=category
             )
 
         if min_price:
-
             products = products.filter(
                 price__gte=min_price
             )
 
         if max_price:
-
             products = products.filter(
                 price__lte=max_price
             )
 
-        products = products.order_by(
-            "-created_at"
-        )
+        products = products.order_by("-created_at")
 
+        # 4. Pagination
         paginator = ProductPagination()
-
-        paginated_products = (
-            paginator.paginate_queryset(
-                products,
-                request
-            )
+        paginated_products = paginator.paginate_queryset(
+            products,
+            request
         )
 
+        # 5. Serialization
         serializer = ProductSerializer(
             paginated_products,
             many=True
@@ -311,7 +356,12 @@ class CompanyDashboardView(APIView):
 
 
     def get(self, request):
+        response = validate_company_access(request.user)
 
+        if response:
+
+            return response
+        
         tenant = request.user.tenant
 
 
@@ -429,7 +479,12 @@ class CompanyCustomersView(APIView):
 
 
     def get(self, request):
+        response = validate_company_access(request.user)
 
+        if response:
+
+            return response
+        
         tenant = request.user.tenant
 
 
@@ -485,7 +540,12 @@ class UpdateOrderStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, order_id):
+        response = validate_company_access(request.user)
 
+        if response:
+
+            return response
+        
         order = Order.objects.get(
             id=order_id,
             tenant=request.user.tenant
@@ -526,7 +586,12 @@ class CreateOrderPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        response = validate_company_access(request.user)
 
+        if response:
+
+            return response
+        
         order_id = request.data.get("order_id")
 
         try:
@@ -569,6 +634,12 @@ class VerifyOrderPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
+        response = validate_company_access(request.user)
+
+        if response:
+
+            return response
 
         order = Order.objects.get(
             id=request.data.get("db_order_id")
