@@ -26,7 +26,11 @@ SECRET_KEY = 'django-insecure-!g30mpdjjivkiy1ss!#glcns*pyw1w0*8y=#kx6l3w%se$t26u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "13.233.122.128",
+]
 
 
 # Application definition
@@ -96,14 +100,18 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 #     }
 # }
 
+from decouple import config
+
+DEBUG = config("DEBUG", default=False, cast=bool)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "saas_db",
-        "USER": "postgres",
-        "PASSWORD": "sajadsuman0913",
-        "HOST": "postgres",
-        "PORT": "5432",
+        "NAME": config("DB_NAME"),
+        "USER": config("DB_USER"),
+        "PASSWORD": config("DB_PASSWORD"),
+        "HOST": config("DB_HOST"),
+        "PORT": config("DB_PORT"),
     }
 }
 
@@ -158,6 +166,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 
 
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://13.233.122.128",
 ]
 
 
