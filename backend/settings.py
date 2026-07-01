@@ -27,9 +27,10 @@ SECRET_KEY = 'django-insecure-!g30mpdjjivkiy1ss!#glcns*pyw1w0*8y=#kx6l3w%se$t26u
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
     "13.233.122.128",
+    "localhost",
+    "127.0.0.1",
+    "vertical-garden.duckdns.org",
 ]
 
 

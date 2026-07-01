@@ -2,7 +2,7 @@ from rest_framework import serializers
 from datetime import date
 from .models import Tenant
 from .models import SubscriptionPayment
-
+from accounts.models import User
 
 class TenantRegisterSerializer(serializers.ModelSerializer):
 
@@ -46,14 +46,26 @@ class TenantRegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
-        validated_data.pop('password')
-
-        validated_data.pop('confirm_password')
-
+        password = validated_data.pop("password")
+        validated_data.pop("confirm_password")
 
         tenant = Tenant.objects.create(
-
             **validated_data
+        )
+
+        username = (
+            tenant.company_name
+            .lower()
+            .replace(" ", "_")
+        )
+
+        User.objects.create_user(
+            username=username,
+            email=tenant.company_email,
+            password=password,
+            role="company_admin",
+            tenant=tenant,
+            is_active=True
         )
 
         return tenant

@@ -79,40 +79,6 @@ class CompanyDropdownView(APIView):
         )
 
 
-# class ApproveTenantView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     def post(self, request, tenant_id):
-#         try:
-#             tenant = Tenant.objects.get(
-#                 id=tenant_id
-#             )
-#         except Tenant.DoesNotExist:
-#             return Response(
-#                 {
-#                     "error": "Tenant not found"
-#                 },
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-#         tenant.status = "approved"
-#         tenant.save()
-#         username = tenant.company_name.lower().replace(" ", "_")
-#         password = "123456"
-#         company_admin = User.objects.create_user(
-#             username=username,
-#             email=tenant.company_email,
-#             password=password,
-#             role='company_admin',
-#             tenant=tenant
-#         )
-#         return Response(
-#             {
-#                 "message": "Tenant approved successfully",
-#                 "company_admin_username": username,
-#                 "password": password
-#             },
-#             status=status.HTTP_200_OK
-#         )
-
 class ApproveCompanyView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -138,44 +104,24 @@ class ApproveCompanyView(APIView):
         tenant.subscription_plan = "trial"
         tenant.save()
 
-        username = (
-            tenant.company_name
-            .lower()
-            .replace(" ", "_")
-        )
-
-        password = "123456"
-
-        if not User.objects.filter(
-            email=tenant.company_email
-        ).exists():
-
-            User.objects.create_user(
-                username=username,
-                email=tenant.company_email,
-                password=password,
-                role="company_admin",
-                tenant=tenant
-            )
 
         send_mail(
             subject="Company Approved",
             message=f"""
-Hello {tenant.owner_name},
+        Hello {tenant.owner_name},
 
-Congratulations!
+        Congratulations!
 
-Your company has been approved.
+        Your company has been approved.
 
-Login Email:
-{tenant.company_email}
+        You can now log in using the email and password you created during registration.
 
-Temporary Password:
-{password}
+        Login Email:
+        {tenant.company_email}
 
-Regards,
-SaaS Platform Team
-""",
+        Regards,
+        SaaS Platform Team
+        """,
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[tenant.company_email],
             fail_silently=True
