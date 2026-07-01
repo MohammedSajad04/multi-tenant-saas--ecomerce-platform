@@ -1,8 +1,12 @@
+import os
 import requests
 
 from products.models import Product
 from products.models import Order
 from accounts.models import User
+
+
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
 
 
 def ask_ai(
@@ -37,9 +41,7 @@ Description: {product.description}
 
     for order in orders:
 
-        total_revenue += float(
-            order.total_price
-        )
+        total_revenue += float(order.total_price)
 
         order_context += f"""
 Customer: {order.user.username}
@@ -72,16 +74,27 @@ Customer: {customer.username}
 Orders: {customer_orders}
 """
 
-    response = requests.post(
-        "http://host.docker.internal:8001/chat",
-        json={
-            "company_id": company_id,
-            "question": question,
-            "products": product_context,
-            "orders": order_context,
-            "analytics": analytics_context,
-            "customers": customer_context
-        }
-    )
+    try:
 
-    return response.json()
+        response = requests.post(
+            f"{AI_SERVICE_URL}/chat",
+            json={
+                "company_id": company_id,
+                "question": question,
+                "products": product_context,
+                "orders": order_context,
+                "analytics": analytics_context,
+                "customers": customer_context
+            },
+            timeout=120
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+
+        return {
+            "answer": f"AI Service Error: {str(e)}"
+        }
