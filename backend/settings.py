@@ -165,6 +165,8 @@ CORS_ALLOWED_ORIGINS = [
 
     "http://localhost:5174",
     "http://localhost:5173",
+    "https://multi-tenant-e-comerce-platform-fro.vercel.app",
+    
 
 
 ]
@@ -173,6 +175,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://13.233.122.128",
+    "https://vertical-garden.duckdns.org",
+    "https://multi-tenant-e-comerce-platform-fro.vercel.app",
 ]
 
 
